@@ -3,8 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title> S-Hawk </title>
+    <title>S-Hawk</title>
     <link rel="icon" href="assets/logos/favicon.png" type="image/png">
+
+    <!-- SEO -->
+    <meta name="description" content="The first of many. Built to transcend human limitations and prepare them for extraterrestrial travel.">
+    <meta name="keywords" content="S-Hawk, aerospace, flapping wing, flight, human flight, extraterrestrial, biomimetic, research, deep tech, frontier engineering">
+    <meta name="author" content="S-Hawk">
+    <meta name="robots" content="index, follow">
+    <meta name="theme-color" content="#0a0a0a">
+
+    <!-- Open Graph (link previews on LinkedIn, iMessage, Slack, etc.) -->
+    <meta property="og:title" content="S-Hawk — Transcendental">
+    <meta property="og:description" content="The first of many. Built to transcend human limitations and prepare them for extraterrestrial travel.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://s-hawk.com">
+    <meta property="og:image" content="https://s-hawk.com/assets/logos/og-image.png">
+    <meta property="og:site_name" content="S-Hawk">
+
+    <!-- Twitter / X Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="S-Hawk — Transcendental">
+    <meta name="twitter:description" content="The first of many. Built to transcend human limitations and prepare them for extraterrestrial travel.">
+    <meta name="twitter:image" content="https://s-hawk.com/assets/logos/og-image.png">
+
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500&display=swap" rel="stylesheet">
     <style>
         *{margin:0;padding:0;box-sizing:border-box}
@@ -87,12 +109,12 @@ function initTyping() {
     deleteN(0, 2); // delete last two dots, one dot remains → "THE FIRST OF MANY."
     pause(0.5);
 
-    // LINE 1: typo in TRANSCEND
+    // LINE 1: typo in TRANSCEND, then typo in LIMITATIONS
     typeStr(1, "BUILT TO TRABSCE");
-    deleteN(1, 4); // delete "BSCE"
-    typeStr(1, "ANSCEND HUMAN LIMTIATIONS");
-    deleteN(1, 7); // delete "TIATIONS"
-    typeStr(1, "ITATIONS");
+    deleteN(1, 4); // delete "BSCE" → "BUILT TO TRA"
+    typeStr(1, "NSCEND HUMAN LIMITAITONS");
+    deleteN(1, 5); // delete "ITONS" → "BUILT TO TRANSCEND HUMAN LIMITA"
+    typeStr(1, "TIONS");
     pause(LINE_GAP);
 
     // LINE 2: typo in EXTRATERRESTRIAL
@@ -142,37 +164,123 @@ function renderFooter(currentTime) {
     let footerAlpha = allDone ? Math.min(1, (currentTime - typingEvents[typingEvents.length-1].t - 0.8) * 0.5) : 0;
     if (footerAlpha <= 0) return;
 
-    let footerY = H - 32;
+    let footerTextY = H - 30;
+    let flourishY = footerTextY - 22;
+    let margin = 70;
+    let flourishW = W - margin * 2;
 
-    // Horizontal rule — single pixel line, stippled for texture
+    // ════════════════════════════════════════════════
+    // ORNAMENTAL FLOURISH DIVIDER
+    // A flowing calligraphic wave made of stipple dots.
+    // Gentle sine curves, thick at center, tapers at edges.
+    // Small star mark at the center point.
+    // ════════════════════════════════════════════════
+
     srand(55555);
-    let lineY = footerY - 15;
-    let lineMargin = 100;
-    for (let x = lineMargin; x < W - lineMargin; x += 1) {
-        let n = vn(x * 0.02, 7777);
-        if (rand() > 0.45 + n * 0.35) continue;
-        let b = 48 + rr(-5, 5);
-        ctx.fillStyle = `rgba(${b|0},${b|0},${(b*0.95)|0},${(footerAlpha * (0.22 + rr(0, 0.10))).toFixed(2)})`;
+
+    // Main flourish: a flowing double-wave
+    let dotCount = 1200;
+    for (let i = 0; i < dotCount; i++) {
+        // Position along the flourish (0 to 1)
+        let t = rand();
+        let x = margin + t * flourishW;
+
+        // Centered t (-1 to 1)
+        let ct = (t - 0.5) * 2;
+
+        // Taper: thick at center, thin at edges (bell curve)
+        let taper = Math.exp(-ct * ct * 3.5);
+
+        // Wave: gentle sine oscillation, 2.5 full cycles
+        let wave = Math.sin(t * Math.PI * 5) * 4.5 * taper;
+
+        // Thickness of the stroke at this point
+        let thickness = 2.8 * taper;
+
+        // Random offset within the stroke thickness
+        let across = rr(-thickness, thickness);
+
+        let px = x + rr(-0.3, 0.3);
+        let py = flourishY + wave + across * 0.5 + rr(-0.3, 0.3);
+
+        // Density: denser at the spine, sparser at edges
+        let edgeDist = Math.abs(across) / thickness;
+        let density = 0.55 * taper * (1 - edgeDist * 0.5);
+        if (rand() > density) continue;
+
+        let b = 115 + rr(-10, 15);
+        let a = footerAlpha * (0.44 + taper * 0.35);
+        ctx.fillStyle = `rgba(${b|0},${b|0},${(b*0.95)|0},${a.toFixed(3)})`;
         ctx.beginPath();
-        ctx.arc(x + rr(-0.15, 0.15), lineY + rr(-0.15, 0.15), 0.35, 0, Math.PI * 2);
+        ctx.arc(px, py, 0.5, 0, Math.PI * 2);
         ctx.fill();
     }
 
-    // Footer text — small, muted
-    ctx.font = `300 9px 'Space Grotesk', sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'top';
+    // Small decorative dots at the two ends of the flourish
+    for (let side of [-1, 1]) {
+        let ex = W / 2 + side * (flourishW / 2 - 5);
+        let dotN = 8;
+        srand(side > 0 ? 77777 : 88888);
+        for (let d = 0; d < dotN; d++) {
+            let dx = ex + rr(-2, 2);
+            let dy = flourishY + rr(-1.5, 1.5);
+            let b = 95 + rr(-8, 8);
+            ctx.fillStyle = `rgba(${b|0},${b|0},${(b*0.95)|0},${(footerAlpha * 0.38).toFixed(2)})`;
+            ctx.beginPath();
+            ctx.arc(dx, dy, 0.4, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+
+    // Center mark: tiny 5-point star at the middle of the flourish
+    srand(99999);
+    let starR = 3.5;
+    let starIR = starR * 0.42;
+    for (let d = 0; d < 50; d++) {
+        let angle = rand() * Math.PI * 2;
+        // Star boundary
+        let sliceA = Math.PI / 5;
+        let a2 = ((angle + Math.PI/2) % (2*sliceA) + 2*sliceA) % (2*sliceA);
+        let st = a2 < sliceA ? a2/sliceA : (2*sliceA-a2)/sliceA;
+        let boundary = starIR + (starR - starIR) * (1 - st);
+        let r = rand() * boundary;
+
+        let px = W/2 + Math.cos(angle) * r;
+        let py = flourishY + Math.sin(angle) * r;
+        let b = 145 + rr(-10, 15);
+        let al = footerAlpha * (0.60 + rr(-0.05, 0.1));
+        ctx.fillStyle = `rgba(${b|0},${b|0},${(b*0.95)|0},${al.toFixed(3)})`;
+        ctx.beginPath();
+        ctx.arc(px + rr(-0.2, 0.2), py + rr(-0.2, 0.2), 0.45, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // ════════════════════════════════════════════════
+    // COPYRIGHT TEXT — more visible, warm gray
+    // ════════════════════════════════════════════════
+
     let year = new Date().getFullYear();
-    ctx.fillStyle = `rgba(110,108,102,${(footerAlpha * 0.40).toFixed(2)})`;
-    // Draw footer char by char with manual spacing to avoid ctx.letterSpacing leak
-    let footerStr = `\u00A9  ${year}  \u2014  ALL RIGHTS RESERVED`;
+    let footerStr = `\u00A9 ${year}  S-HAWK  \u2022  ALL RIGHTS RESERVED`;
+
+    ctx.font = `400 10px 'Space Grotesk', sans-serif`;
+    ctx.textBaseline = 'top';
+
+    // Measure total width with tracking
+    let tracking = 2.5;
     let ftw = 0;
-    for (let i = 0; i < footerStr.length; i++) ftw += ctx.measureText(footerStr[i]).width + 1.5;
-    ftw -= 1.5;
+    for (let i = 0; i < footerStr.length; i++) ftw += ctx.measureText(footerStr[i]).width + tracking;
+    ftw -= tracking;
+
     let fx = (W - ftw) / 2;
     for (let i = 0; i < footerStr.length; i++) {
-        ctx.fillText(footerStr[i], fx, footerY);
-        fx += ctx.measureText(footerStr[i]).width + 1.5;
+        let ch = footerStr[i];
+        // Warmer, more visible gray
+        let b = 152 + (Math.sin(i * 0.7) * 5);
+        let a = footerAlpha * 0.65;
+        ctx.fillStyle = `rgba(${b|0},${(b-2)|0},${(b-6)|0},${a.toFixed(3)})`;
+        ctx.textAlign = 'left';
+        ctx.fillText(ch, fx, footerTextY);
+        fx += ctx.measureText(ch).width + tracking;
     }
 }
 
