@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Core Insignia — Animated with Text</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500&display=swap" rel="stylesheet">
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        html,body{background:#0a0a0a;width:100%;height:100%;overflow:hidden}
+        body{display:flex;align-items:center;justify-content:center}
+        canvas{display:block;max-width:100vw;max-height:100vh;width:auto;height:auto;object-fit:contain}
+        /* On phones (portrait): fill width, let height follow aspect ratio */
+        @media (max-aspect-ratio: 9/10) {
+            canvas{width:100vw;height:auto}
+        }
+        /* On wide screens: fill height, let width follow */
+        @media (min-aspect-ratio: 9/10) {
+            canvas{height:100vh;width:auto}
+        }
+    </style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+
+// Portrait format: text on top, eye in square zone below
+const W = 800;
+const H = 1000;
+canvas.width = W; canvas.height = H;
+const EYE_ZONE = 650; // fixed reference for all eye proportions
+const EYE_TOP = 250;  // y where eye zone starts (room for text above)
+const PHI = 1.6180339887;
+
+// ═══════════════════════════════════════════════════════
+// TEXT — typing with mistakes, clear rendering, block cursor
+// ═══════════════════════════════════════════════════════
+
+const LINES = [
+    "THE FIRST OF MANY.",
+    "BUILT TO TRANSCEND HUMAN LIMITATIONS",
+    "AND PREPARE THEM FOR EXTRATERRESTRIAL TRAVEL."
+];
+
+// Build typing sequence with typos, pauses, ...
+let typingEvents = [];
+
+function initTyping() {
+    typingEvents = [];
+    let t = 2.0;
+    const CD = 0.065;    // slower char delay
+    const FAST = 0.035;  // delete speed
+    const PAUSE = 0.35;  // longer pause before noticing mistake
+    const LINE_GAP = 1.2;
+
+    function typeStr(line, str) {
+        for (let i = 0; i < str.length; i++) {
+            typingEvents.push({ t, action: 'type', char: str[i], line });
+            // Human variance: occasional slight hesitation
+            let variance = (Math.random() * 0.04 - 0.02);
+            if (Math.random() < 0.08) variance += 0.12; // rare longer pause mid-word
+            t += CD + variance;
+        }
+    }
+    function deleteN(line, n) {
+        t += PAUSE;
+        for (let i = 0; i < n; i++) {
+            typingEvents.push({ t, action: 'delete', line });
+            t += FAST;
+        }
+        t += 0.15;
+    }
+    function pause(dur) { t += dur; }
+
+    // LINE 0: "THE FIRST OF MANY" (no dot) → type "..." → delete 2 → leaves one dot
+    typeStr(0, "THE FIRST OF MANY");
+    pause(0.5);
+    typeStr(0, ".");
+    pause(0.35);
+    typeStr(0, ".");
+    pause(0.3);
+    typeStr(0, ".");
+    pause(1.0); // long dramatic pause
+    deleteN(0, 2); // delete last two dots, one dot remains → "THE FIRST OF MANY."
+    pause(0.5);
+
+    // LINE 1: typo in TRANSCEND
+    typeStr(1, "BUILT TO TRABSCE");
+    deleteN(1, 4); // delete "BSCE"
+    typeStr(1, "ANSCEND HUMAN LIMTIATIONS");
+    deleteN(1, 7); // delete "TIATIONS"
+    typeStr(1, "ITATIONS");
+    pause(LINE_GAP);
+
+    // LINE 2: typo in EXTRATERRESTRIAL
+    typeStr(2, "AND PRPARE");
+    deleteN(2, 5); // delete "RPARE"
+    typeStr(2, "EPARE THEM FOR EXTRATERESTRIAL");
+    deleteN(2, 9); // delete "RESTRIAL" + one more
+    typeStr(2, "RRESTRIAL TRAVEL.");
+}
+initTyping();
+
+function getDisplayedText(currentTime) {
+    let lines = ['', '', ''];
+    let activeLine = -1;
+
+    for (let ev of typingEvents) {
+        if (currentTime < ev.t) break;
+        activeLine = ev.line;
+        if (ev.action === 'type') {
+            lines[ev.line] += ev.char;
+        } else if (ev.action === 'delete') {
+            lines[ev.line] = lines[ev.line].slice(0, -1);
+        }
+    }
+
+    let allDone = currentTime > typingEvents[typingEvents.length - 1].t + 0.8;
+    return { lines, activeLine, allDone };
+}
+
+function cursorOn(t) {
+    return (t % 1.06) < 0.53;
+}
+
+// Text canvas for measuring only
+let textCanvas, textCtx;
+function initTextCanvas() {
+    textCanvas = document.createElement('canvas');
+    textCanvas.width = W;
+    textCanvas.height = 200;
+    textCtx = textCanvas.getContext('2d');
+}
+initTextCanvas();
+
+// ── FOOTER ──
+function renderFooter(currentTime) {
+    let { allDone } = getDisplayedText(currentTime);
+    let footerAlpha = allDone ? Math.min(1, (currentTime - typingEvents[typingEvents.length-1].t - 0.8) * 0.5) : 0;
+    if (footerAlpha <= 0) return;
+
+    let footerY = H - 32;
+
+    // Horizontal rule — single pixel line, stippled for texture
+    srand(55555);
+    let lineY = footerY - 15;
+    let lineMargin = 100;
+    for (let x = lineMargin; x < W - lineMargin; x += 1) {
+        let n = vn(x * 0.02, 7777);
+        if (rand() > 0.45 + n * 0.35) continue;
+        let b = 48 + rr(-5, 5);
+        ctx.fillStyle = `rgba(${b|0},${b|0},${(b*0.95)|0},${(footerAlpha * (0.22 + rr(0, 0.10))).toFixed(2)})`;
+        ctx.beginPath();
+        ctx.arc(x + rr(-0.15, 0.15), lineY + rr(-0.15, 0.15), 0.35, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // Footer text — small, muted
+    ctx.font = `300 9px 'Space Grotesk', sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    let year = new Date().getFullYear();
+    ctx.fillStyle = `rgba(110,108,102,${(footerAlpha * 0.40).toFixed(2)})`;
+    // Draw footer char by char with manual spacing to avoid ctx.letterSpacing leak
+    let footerStr = `\u00A9  ${year}  \u2014  ALL RIGHTS RESERVED`;
+    let ftw = 0;
+    for (let i = 0; i < footerStr.length; i++) ftw += ctx.measureText(footerStr[i]).width + 1.5;
+    ftw -= 1.5;
+    let fx = (W - ftw) / 2;
+    for (let i = 0; i < footerStr.length; i++) {
+        ctx.fillText(footerStr[i], fx, footerY);
+        fx += ctx.measureText(footerStr[i]).width + 1.5;
+    }
+}
+
+function renderText(currentTime) {
+    let { lines, activeLine, allDone } = getDisplayedText(currentTime);
+    if (activeLine < 0) return;
+
+    // ════════════════════════════════════════════════════════════
+    // TYPOGRAPHIC SYSTEM — Apple-grade analysis
+    //
+    // PRINCIPLE 1: Size creates hierarchy, not weight.
+    //   Line 0 is 22px. Lines 1-2 are 14px. That 1.57x ratio
+    //   is enough to separate them without needing bold.
+    //
+    // PRINCIPLE 2: Weight 400 (Regular) for display text.
+    //   Medium/Bold on all-caps looks corporate. Regular at
+    //   large size + wide tracking = confident and elegant.
+    //   Apple hero text is almost always Regular weight.
+    //
+    // PRINCIPLE 3: Tracking scales inversely with size.
+    //   Large text: 0.35em (loose, architectural, luxury)
+    //   Small text: 0.25em (still wide, but tighter ratio)
+    //   This follows SF Pro's optical size tracking curve.
+    //
+    // PRINCIPLE 4: Vertical rhythm has meaning.
+    //   Line 0 → Lines 1-2: gap (56px). Chapter break.
+    //   Line 1 → Line 2: tight gap (34px). Same sentence.
+    //   This creates grouping — Gestalt proximity.
+    //
+    // PRINCIPLE 5: Color hierarchy via opacity, not brightness.
+    //   Line 0: 0.90 alpha — the statement.
+    //   Lines 1-2: 0.52 alpha — recedes. Earned on second look.
+    //   Base color: warm off-white (232,228,220), not pure white.
+    //   Pure white on #0a0a0a creates eye strain.
+    //
+    // PRINCIPLE 6: No grain on text.
+    //   The grain/stipple texture belongs to the EYE.
+    //   Text should be clean — the contrast between clean type
+    //   and textured visual element is what creates impact.
+    //   Apple never puts noise on text.
+    // ════════════════════════════════════════════════════════════
+
+    // Warm off-white (not pure white — matches stipple dot tone)
+    let baseR = 232, baseG = 228, baseB = 220;
+
+    // Line configs
+    let lineConfig = [
+        // Line 0: THE FIRST OF MANY. — the anchor statement
+        { size: 22, weight: 400, track: 7.5, alpha: 0.90, gapAfter: 56 },
+        // Line 1: continuation — secondary, lighter
+        { size: 14, weight: 300, track: 4.8, alpha: 0.52, gapAfter: 34 },
+        // Line 2: continuation — same hierarchy as line 1
+        { size: 14, weight: 300, track: 4.8, alpha: 0.52, gapAfter: 34 },
+    ];
+
+    let textAreaTop = 72;
+
+    ctx.save();
+
+    let yPos = textAreaTop;
+
+    for (let li = 0; li <= 2; li++) {
+        let str = lines[li];
+        if (!str) continue;
+
+        let cfg = lineConfig[li];
+        let yBase = yPos;
+
+        ctx.font = `${cfg.weight} ${cfg.size}px 'Space Grotesk', sans-serif`;
+
+        // Measure with tracking
+        let charWidths = [];
+        let totalW = 0;
+        for (let ci = 0; ci < str.length; ci++) {
+            let w = ctx.measureText(str[ci]).width;
+            charWidths.push(w);
+            totalW += w + (ci < str.length - 1 ? cfg.track : 0);
+        }
+
+        let xPos = (W - totalW) / 2;
+
+        // Draw each character — clean, no grain
+        for (let ci = 0; ci < str.length; ci++) {
+            let ch = str[ci];
+            let cw = charWidths[ci];
+
+            // Per-character micro-variation (barely perceptible, just breaks digital perfection)
+            srand(li * 10000 + ci * 137);
+            let rVar = (rand() - 0.5) * 3; // very subtle brightness shift
+
+            let r = baseR + rVar;
+            let g = baseG + rVar * 0.9;
+            let b = baseB + rVar * 0.7;
+
+            ctx.fillStyle = `rgba(${r|0},${g|0},${b|0},${cfg.alpha.toFixed(3)})`;
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'top';
+            ctx.fillText(ch, xPos, yBase);
+
+            xPos += cw + cfg.track;
+        }
+
+        // ── BLOCK CURSOR ──
+        if (li === activeLine && !allDone) {
+            let show = cursorOn(currentTime);
+            let cursorX = xPos + 3;
+            let cursorH = cfg.size + 2;
+            let cursorW = Math.max(8, cfg.size * 0.5);
+            let cursorY = yBase + 1;
+
+            if (show) {
+                // Clean cursor block — warm tone, slight stipple
+                srand(9999 + Math.floor(currentTime * 2));
+                for (let dy = 0; dy < cursorH; dy++) {
+                    for (let dx = 0; dx < cursorW; dx++) {
+                        let n = vn((cursorX + dx) * 0.2, (cursorY + dy) * 0.2);
+                        if (rand() > 0.84 + n * 0.08) continue;
+
+                        let cb = baseR - 30 + rr(-6, 8);
+                        let ca = 0.45 + rr(-0.03, 0.05);
+                        ctx.fillStyle = `rgba(${cb|0},${(cb*0.98)|0},${(cb*0.95)|0},${ca.toFixed(2)})`;
+                        ctx.beginPath();
+                        ctx.arc(cursorX + dx + rr(-0.12, 0.12), cursorY + dy + rr(-0.12, 0.12), 0.45, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+            }
+        }
+
+        yPos += cfg.gapAfter;
+    }
+
+    ctx.restore();
+
+    renderFooter(currentTime);
+}
+
+// ═══════════════════════════════════════════════════════
+// SEEDED RNG + NOISE
+// ═══════════════════════════════════════════════════════
+let rS = 42;
+function srand(s){rS=s}
+function rand(){rS=(rS*16807)%2147483647;return(rS-1)/2147483646}
+function rr(a,b){return a+rand()*(b-a)}
+function h2(x,y){let n=Math.sin(x*127.1+y*311.7)*43758.5453;return n-Math.floor(n)}
+function vn(x,y){
+    let ix=Math.floor(x),iy=Math.floor(y),fx=x-ix,fy=y-iy;
+    fx=fx*fx*(3-2*fx);fy=fy*fy*(3-2*fy);
+    let a=h2(ix,iy),b=h2(ix+1,iy),c=h2(ix,iy+1),d=h2(ix+1,iy+1);
+    return a+(b-a)*fx+(c-a)*fy+(a-b-c+d)*fx*fy;
+}
+
+// ═══════════════════════════════════════════════════════
+// EYE ANIMATION STATE
+// ═══════════════════════════════════════════════════════
+let time = 0;
+let eyeOpen = 1, gazeAngle = 0, irisPulse = 1, starPtsF = 5;
+
+const LOOP = 20;
+const TL = [
+    {s:2.0,d:0.12,p:'eyeOpen',a:1,b:0,e:'eI'},
+    {s:2.12,d:0.18,p:'eyeOpen',a:0,b:1,e:'eO'},
+    {s:3.0,d:0.7,p:'gazeAngle',a:0,b:0.43,e:'eIO'},
+    {s:4.2,d:0.6,p:'gazeAngle',a:0.43,b:0,e:'eIO'},
+    {s:5.2,d:0.12,p:'eyeOpen',a:1,b:0,e:'eI'},
+    {s:5.32,d:0.18,p:'eyeOpen',a:0,b:1,e:'eO'},
+    {s:5.8,d:0.7,p:'gazeAngle',a:0,b:-0.38,e:'eIO'},
+    {s:7.0,d:0.6,p:'gazeAngle',a:-0.38,b:0,e:'eIO'},
+    {s:7.8,d:0.7,p:'irisPulse',a:1,b:1.20,e:'eIO'},
+    {s:8.8,d:0.6,p:'irisPulse',a:1.20,b:1,e:'eIO'},
+    {s:9.5,d:0.12,p:'eyeOpen',a:1,b:0,e:'eI'},
+    {s:9.62,d:0.18,p:'eyeOpen',a:0,b:1,e:'eO'},
+    {s:10.5,d:1.0,p:'starPtsF',a:5,b:6,e:'eIO'},
+    {s:11.8,d:0.8,p:'starPtsF',a:6,b:7,e:'eIO'},
+    {s:12.9,d:0.7,p:'starPtsF',a:7,b:8,e:'eIO'},
+    {s:13.8,d:0.12,p:'eyeOpen',a:1,b:0,e:'eI'},
+    {s:13.92,d:0.18,p:'eyeOpen',a:0,b:1,e:'eO'},
+    {s:14.3,d:1.0,p:'starPtsF',a:8,b:5,e:'eIO'},
+    {s:14.3,d:0.5,p:'irisPulse',a:1,b:0.82,e:'eIO'},
+    {s:14.8,d:0.6,p:'irisPulse',a:0.82,b:1,e:'eIO'},
+    {s:16.0,d:0.5,p:'gazeAngle',a:0,b:0.35,e:'eIO'},
+    {s:16.6,d:0.6,p:'gazeAngle',a:0.35,b:-0.30,e:'eIO'},
+    {s:17.3,d:0.5,p:'gazeAngle',a:-0.30,b:0,e:'eIO'},
+    {s:18.5,d:0.12,p:'eyeOpen',a:1,b:0,e:'eI'},
+    {s:18.62,d:0.18,p:'eyeOpen',a:0,b:1,e:'eO'},
+];
+
+function eI(t){return t*t}
+function eO(t){return 1-(1-t)*(1-t)}
+function eIO(t){return t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2}
+function ease(n,t){return n==='eI'?eI(t):n==='eO'?eO(t):eIO(t)}
+
+function updateAnim(){
+    let lt = time % LOOP;
+    let latest = {};
+    for(let ev of TL){
+        if(lt>=ev.s){
+            if(lt<ev.s+ev.d){
+                latest[ev.p]=ev.a+(ev.b-ev.a)*ease(ev.e,(lt-ev.s)/ev.d);
+            } else {
+                latest[ev.p]=ev.b;
+            }
+        }
+    }
+    eyeOpen = latest.eyeOpen !== undefined ? latest.eyeOpen : 1;
+    gazeAngle = latest.gazeAngle !== undefined ? latest.gazeAngle : 0;
+    irisPulse = latest.irisPulse !== undefined ? latest.irisPulse : 1;
+    starPtsF = latest.starPtsF !== undefined ? latest.starPtsF : 5;
+    irisPulse *= 1 + Math.sin(time * 1.1) * 0.02;
+}
+
+// ═══════════════════════════════════════════════════════
+// EYE GEOMETRY — smooth interior, discrete bite-mark border
+//
+// insideEye: smooth almond. No modulation. Clean clip.
+// Border: individual crescent marks with gaps, like the
+// tattoo reference — each tooth is a separate small arc.
+// ═══════════════════════════════════════════════════════
+
+function insideEye(px, py, cx, cy, eW, eH) {
+    let dx = (px - cx) / (eW * 0.5);
+    if (dx * dx >= 1) return false;
+    return Math.abs(py - cy) <= Math.pow(1 - dx * dx, 0.6) * eH * 0.5;
+}
+
+function starRadF(angle,oR,iR,nF){
+    // TRUE POLYGON STAR: straight edges via ray-line intersection
+    // For fractional nF, blend between floor and ceil polygon stars
+    let nL=Math.floor(nF),nH=nL+1,fr=nF-nL;
+    function polyStarRad(n, ang) {
+        // Build 2n vertices: alternating outer tip, inner valley
+        // Tips point up (offset by -π/2)
+        let totalVerts = 2 * n;
+        let segAngle = Math.PI / n; // angle per segment (tip→valley or valley→tip)
+
+        // Normalize angle to [0, 2π)
+        let a = ((ang + Math.PI/2) % (Math.PI*2) + Math.PI*2) % (Math.PI*2);
+
+        // Which segment are we in?
+        let segIdx = Math.floor(a / segAngle);
+        if (segIdx >= totalVerts) segIdx = totalVerts - 1;
+
+        // The two vertices bounding this segment
+        let a1 = segIdx * segAngle;
+        let a2 = (segIdx + 1) * segAngle;
+        let r1 = (segIdx % 2 === 0) ? oR : iR;
+        let r2 = ((segIdx + 1) % 2 === 0) ? oR : iR;
+
+        // Vertex positions (in rotated space where tip0 is at angle 0)
+        let p1x = r1 * Math.cos(a1), p1y = r1 * Math.sin(a1);
+        let p2x = r2 * Math.cos(a2), p2y = r2 * Math.sin(a2);
+
+        // Ray from origin at angle a: (t*cos(a), t*sin(a))
+        // Line: P1 + s*(P2-P1)
+        // Solve for t (distance from center)
+        let ca = Math.cos(a), sa = Math.sin(a);
+        let dx = p2x - p1x, dy = p2y - p1y;
+        let denom = ca * dy - sa * dx;
+        if (Math.abs(denom) < 1e-10) return oR; // degenerate
+
+        let t = (p1x * dy - p1y * dx) / denom;
+        return Math.max(0, t);
+    }
+    return polyStarRad(nL, angle) * (1-fr) + polyStarRad(nH, angle) * fr;
+}
+function starDFF(px,py,cx,cy,oR,iR,nF){
+    let d=Math.sqrt((px-cx)**2+(py-cy)**2);
+    let b=starRadF(Math.atan2(py-cy,px-cx),oR,iR,nF);
+    // Softer edge falloff for stipple (narrow band)
+    if(d>b*1.04)return 0;if(d<=b*.90)return 1;
+    return 1-(d-b*.90)/(b*.14);
+}
+function lightF(px,py,cx,cy){
+    return .10+(Math.cos(Math.atan2(py-cy,px-cx)-5.497)+1)*.45;
+}
+
+function getIrisTransform(gazeAng, baseIrisR) {
+    let sphereR = baseIrisR * 1.8;
+    return {
+        offsetX: sphereR * Math.sin(gazeAng),
+        scaleX: Math.cos(gazeAng),
+        scaleY: 1.0 + Math.abs(gazeAng) * 0.03
+    };
+}
+function irisToCanvas(lx,ly,cx,cy,tr){
+    return { x: cx + tr.offsetX + lx * tr.scaleX, y: cy + ly * tr.scaleY };
+}
+function distFromIrisCenter(cx2,cy2,cx,cy,tr){
+    let lx=(cx2-cx-tr.offsetX)/tr.scaleX, ly=(cy2-cy)/tr.scaleY;
+    return Math.sqrt(lx*lx+ly*ly);
+}
+
+// ═══════════════════════════════════════════════════════
+// EYE RENDER (identical logic, shifted down)
+// ═══════════════════════════════════════════════════════
+
+function dot(x,y,brightness,alpha){
+    ctx.fillStyle=`rgba(${brightness|0},${brightness|0},${(brightness*.98)|0},${Math.min(1,alpha).toFixed(3)})`;
+    ctx.beginPath();ctx.arc(x,y,0.7,0,Math.PI*2);ctx.fill();
+}
+
+function renderEye(){
+    srand(42);
+
+    // Eye centered in the eye zone (below text)
+    let cx = W / 2;
+    let cy = EYE_TOP + EYE_ZONE * 0.47;
+
+    // All dimensions relative to EYE_ZONE (fixed square), NOT canvas W or H
+    let eyeW = EYE_ZONE * 0.85;
+    let eyeH = EYE_ZONE * 0.38 * 0.68 * eyeOpen;
+
+    if(eyeOpen < 0.03){ drawSeam(cx, cy, eyeW); return; }
+
+    let irisDiam = eyeW / PHI;
+    let outerIrisR = (irisDiam / 2) * irisPulse;
+    let innerIrisR = outerIrisR / PHI;
+    let starOuterR = innerIrisR / PHI;
+    let starInnerR = starOuterR * 0.40;
+    let coreR = starOuterR / PHI;
+    let dB = 215;
+
+    let tr = getIrisTransform(gazeAngle, outerIrisR);
+
+    let densityScale = Math.pow(eyeOpen, 0.5);
+    let base = 20000 * densityScale;
+
+    // ── BG GRAIN ──
+    let bgN = Math.floor(W * H * 0.0006);
+    for(let i=0;i<bgN;i++){
+        let x=rand()*W,y=rand()*H,n=vn(x*.005,y*.005);
+        if(rand()>n*.4)continue;
+        let b=14+n*11;
+        ctx.fillStyle=`rgba(${b|0},${b|0},${b|0},${(0.10+rand()*.10).toFixed(2)})`;
+        ctx.beginPath();ctx.arc(x,y,rr(.3,.7),0,Math.PI*2);ctx.fill();
+    }
+
+    // ── SCLERA ──
+    let sN=Math.floor(base*1.7);
+    for(let i=0;i<sN;i++){
+        let x=rr(cx-eyeW*.55,cx+eyeW*.55);
+        let y=rr(cy-eyeH*.58,cy+eyeH*.58);
+        if(!insideEye(x,y,cx,cy,eyeW,eyeH))continue;
+        let dI=distFromIrisCenter(x,y,cx,cy,tr);
+        if(dI<outerIrisR)continue;
+        let edx=(x-cx)/(eyeW*.5),edy=(y-cy)/(eyeH*.5);
+        let eFall=Math.max(0,1-Math.pow(Math.sqrt(edx*edx+edy*edy),2.5));
+        let hn=vn(x*.012,y*.012);
+        let l=lightF(x,y,cx+tr.offsetX,cy);
+        if(rand()>eFall*(.4+hn*.45)*(.5+l*.6))continue;
+        dot(x+rr(-.6,.6),y+rr(-.6,.6),dB+rr(-10,8),.45+eFall*.3+l*.15);
+    }
+
+    // ── OUTER IRIS ──
+    let oN=Math.floor(base*1.1);
+    for(let i=0;i<oN;i++){
+        let a=rand()*Math.PI*2,r=rr(innerIrisR,outerIrisR*1.02);
+        let lx=Math.cos(a)*r,ly=Math.sin(a)*r;
+        let pt=irisToCanvas(lx,ly,cx,cy,tr);
+        if(!insideEye(pt.x,pt.y,cx,cy,eyeW,eyeH))continue;
+        let rp=(r-innerIrisR)/(outerIrisR-innerIrisR);
+        let den=.35+.48*Math.pow(1-rp,1.5);
+        let l=lightF(pt.x,pt.y,cx+tr.offsetX,cy);
+        let n=vn(pt.x*.008,pt.y*.008);
+        den*=(.5+n*.5)*(.5+l*.6);
+        if(rand()>den)continue;
+        dot(pt.x+rr(-.5,.5),pt.y+rr(-.5,.5),48+rr(-6,10)+rp*12,.55+rr(-.08,.15)+l*.15);
+    }
+
+    // ── INNER IRIS ──
+    let iNn=Math.floor(base*1.0);
+    for(let i=0;i<iNn;i++){
+        let a=rand()*Math.PI*2,mn=coreR*.85;
+        let r=rr(mn,innerIrisR);
+        let lx=Math.cos(a)*r,ly=Math.sin(a)*r;
+        let pt=irisToCanvas(lx,ly,cx,cy,tr);
+        if(!insideEye(pt.x,pt.y,cx,cy,eyeW,eyeH))continue;
+        let rp=(r-mn)/(innerIrisR-mn);
+        let den=.45+.35*(1-Math.abs(rp-.4)*2);
+        let l=lightF(pt.x,pt.y,cx+tr.offsetX,cy);
+        let n=vn(pt.x*.01,pt.y*.01);
+        den*=(.5+n*.5)*(.5+l*.6);
+        // local star check
+        let slx=(pt.x-cx-tr.offsetX)/tr.scaleX,sly=(pt.y-cy)/tr.scaleY;
+        let sd2=Math.sqrt(slx*slx+sly*sly);
+        let sa=Math.atan2(sly,slx);
+        let sb=starRadF(sa,starOuterR*1.05,starInnerR,starPtsF);
+        let sdv; if(sd2>sb*1.06)sdv=0;else if(sd2<=sb*.85)sdv=1;else sdv=1-(sd2-sb*.85)/(sb*.21);
+        if(sdv>.4)continue;
+        if(rand()>den)continue;
+        dot(pt.x+rr(-.4,.4),pt.y+rr(-.4,.4),100+rr(-10,16)+(1-rp)*18,.5+rr(-.05,.18)+l*.12);
+    }
+
+    // ── STAR ──
+    let stN=Math.floor(base*1.3);
+    for(let i=0;i<stN;i++){
+        let lx2=rr(-starOuterR*1.15,starOuterR*1.15);
+        let ly2=rr(-starOuterR*1.15,starOuterR*1.15);
+        let pt=irisToCanvas(lx2,ly2,cx,cy,tr);
+        if(!insideEye(pt.x,pt.y,cx,cy,eyeW,eyeH))continue;
+        let ld=Math.sqrt(lx2*lx2+ly2*ly2);
+        let la2=Math.atan2(ly2,lx2);
+        let b2=starRadF(la2,starOuterR,starInnerR,starPtsF);
+        let sd;if(ld>b2*1.06)sd=0;else if(ld<=b2*.85)sd=1;else sd=1-(ld-b2*.85)/(b2*.21);
+        if(sd<=0)continue;
+        let l=lightF(pt.x,pt.y,cx+tr.offsetX,cy);
+        let n=vn(pt.x*.015,pt.y*.015);
+        if(rand()>sd*.9*(.55+n*.5)*(.55+l*.5))continue;
+        dot(pt.x+rr(-.3,.3),pt.y+rr(-.3,.3),Math.min(248,dB+18+rr(-5,12)+sd*12),.7+sd*.2+l*.08);
+    }
+
+    // ── CORE GLOW ──
+    let gN=Math.floor(base*.25);
+    for(let i=0;i<gN;i++){
+        let a=rand()*Math.PI*2,r=rand()*coreR;
+        let lx3=Math.cos(a)*r,ly3=Math.sin(a)*r;
+        let pt=irisToCanvas(lx3,ly3,cx,cy,tr);
+        if(!insideEye(pt.x,pt.y,cx,cy,eyeW,eyeH))continue;
+        let dn=r/coreR;
+        if(rand()>Math.pow(1-dn,2)*.55)continue;
+        dot(pt.x,pt.y,Math.min(250,dB+22+rr(-6,12)),.35+(1-dn)*.3);
+    }
+
+    // ── BITE MARKS — thick discrete crescents, clear gaps ──
+    function renderBiteMarks(side, teethOffset) {
+        let numTeeth = 10;
+        let dotsPerTooth = Math.floor(base * 0.12);
+
+        for (let ti = 0; ti < numTeeth; ti++) {
+            let tPos = 0.07 + (ti / (numTeeth - 1)) * 0.86;
+            tPos += teethOffset;
+
+            let dx = -1 + tPos * 2;
+            if (Math.abs(dx) > 0.96) continue;
+
+            let almondY = Math.pow(Math.max(0, 1 - dx * dx), 0.6);
+            let boundaryX = cx + dx * eyeW * 0.5;
+            let boundaryY = cy + side * almondY * eyeH * 0.5;
+
+            // CENTERED tangent (symmetric derivative)
+            let dxL = dx - 0.005, dxR = dx + 0.005;
+            let ayL = Math.pow(Math.max(0, 1 - dxL * dxL), 0.6);
+            let ayR = Math.pow(Math.max(0, 1 - dxR * dxR), 0.6);
+            let tgX = (dxR - dxL) * eyeW * 0.5;
+            let tgY = side * (ayR - ayL) * eyeH * 0.5;
+            let tgLen = Math.sqrt(tgX * tgX + tgY * tgY);
+            if (tgLen < 0.001) continue;
+            let tx = tgX / tgLen, ty = tgY / tgLen;
+
+            // Normal pointing OUTWARD
+            let nx = ty * side, ny = -tx * side;
+
+            // Variable size
+            let centerDist = Math.abs(dx);
+            let markLen = eyeW * 0.025 * (0.6 + centerDist * 0.8);
+            let markThick = eyeH * 0.055 * (0.5 + centerDist * 0.7);
+            let bowOut = eyeH * 0.02;
+
+            srand(42 + ti * 777 + (side > 0 ? 50000 : 0));
+            for (let di = 0; di < dotsPerTooth; di++) {
+                let along = rr(-1, 1);
+                // CENTERED: -0.5 to 0.5 so crescent is symmetric
+                let across = rr(-0.5, 0.5);
+
+                // Symmetric elliptical profile
+                let profile = Math.sqrt(Math.max(0, 1 - along * along));
+
+                let curve = profile * bowOut;
+                let localThick = markThick * profile;
+
+                let localX = along * markLen;
+                // Centered: body extends equally both sides of the bow curve
+                let localY = curve + across * localThick;
+
+                let px = boundaryX + tx * localX + nx * localY;
+                let py = boundaryY + ty * localX + ny * localY;
+                px += rr(-0.45, 0.45);
+                py += rr(-0.45, 0.45);
+
+                // Symmetric density: densest at spine, fades at both edges
+                let density = 0.78 * profile * (1.0 - Math.abs(across) * 0.6);
+                if (Math.abs(along) > 0.75) density *= (1 - Math.abs(along)) / 0.25;
+                if (rand() > density) continue;
+
+                let l = lightF(px, py, cx + tr.offsetX, cy);
+                dot(px, py, dB - 5 + rr(-10, 15), 0.55 + profile * 0.25 + l * 0.1);
+            }
+        }
+    }
+
+    renderBiteMarks(-1, 0);
+    renderBiteMarks(1, 0.04);
+
+    // ── IRIS EDGE ──
+    let ieN=Math.floor(base*.18);
+    for(let i=0;i<ieN;i++){
+        let a=rand()*Math.PI*2;
+        let lx4=Math.cos(a)*outerIrisR+rr(-1.8,1.8),ly4=Math.sin(a)*outerIrisR+rr(-1.8,1.8);
+        let pt=irisToCanvas(lx4,ly4,cx,cy,tr);
+        if(!insideEye(pt.x,pt.y,cx,cy,eyeW,eyeH))continue;
+        let l=lightF(pt.x,pt.y,cx+tr.offsetX,cy);
+        if(rand()>.45*l+vn(pt.x*.015,pt.y*.015)*.25)continue;
+        dot(pt.x,pt.y,dB-45+rr(-8,12),.4+rr(-.05,.15)+l*.12);
+    }
+
+    // ── INNER RING EDGE ──
+    let irN=Math.floor(base*.1);
+    for(let i=0;i<irN;i++){
+        let a=rand()*Math.PI*2;
+        let lx5=Math.cos(a)*innerIrisR+rr(-1.2,1.2),ly5=Math.sin(a)*innerIrisR+rr(-1.2,1.2);
+        let pt=irisToCanvas(lx5,ly5,cx,cy,tr);
+        if(!insideEye(pt.x,pt.y,cx,cy,eyeW,eyeH))continue;
+        let l=lightF(pt.x,pt.y,cx+tr.offsetX,cy);
+        if(rand()>.4*l+vn(pt.x*.012,pt.y*.012)*.3)continue;
+        dot(pt.x,pt.y,dB-30+rr(-8,12),.35+rr(-.05,.12)+l*.1);
+    }
+}
+
+function drawSeam(cx,cy,eyeW){
+    srand(42);
+    let numTeeth = 10;
+    // Discrete chunky tooth marks along the closed seam
+    for(let ti = 0; ti < numTeeth; ti++){
+        let tPos = 0.07 + (ti / (numTeeth - 1)) * 0.86;
+        let dx = -1 + tPos * 2;
+        if(Math.abs(dx) > 0.96) continue;
+        let bx = cx + dx * eyeW * 0.5;
+
+        // Variable width: narrow center, wider sides
+        let centerDist = Math.abs(dx);
+        let markW = 3 + centerDist * 5;
+        let markH = 1.5 + centerDist * 1.5;
+
+        let markDots = 15 + Math.floor(rand() * 10);
+        for(let di = 0; di < markDots; di++){
+            let along = rr(-1, 1);
+            let across = rr(-1, 1);
+            let profile = Math.sqrt(Math.max(0, 1 - along * along));
+            if(rand() > profile * 0.7) continue;
+            let mx = bx + along * markW;
+            let my = cy + across * markH * profile;
+            let b = 145 + rr(-15, 15);
+            ctx.fillStyle=`rgba(${b|0},${b|0},${(b*.97)|0},${(.15+rand()*.15).toFixed(2)})`;
+            ctx.beginPath();ctx.arc(mx,my,.45,0,Math.PI*2);ctx.fill();
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════
+// MAIN LOOP
+// ═══════════════════════════════════════════════════════
+let lastT=0;
+function loop(ts){
+    if(!lastT)lastT=ts;
+    let dt=(ts-lastT)/1000;lastT=ts;
+    if(dt>.1)dt=.1;
+    time+=dt;
+
+    updateAnim();
+
+    // Clear
+    ctx.fillStyle='#0a0a0a';
+    ctx.fillRect(0,0,W,H);
+
+    // Render eye first
+    renderEye();
+
+    // Render text on top
+    renderText(time);
+
+    requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
