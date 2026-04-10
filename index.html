@@ -4,33 +4,102 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>S-Hawk — The First of Many</title>
-    <meta name="description" content="S-Hawk. Building ventures that upgrade humans and redefine what is possible. The first of many.">
+    <meta name="description" content="S-Hawk. Building ventures that upgrade humans and redefine what is possible. The first of many. Marco Mascolo's venture studio.">
     <meta name="author" content="Marco Mascolo">
-    <meta name="keywords" content="S-Hawk, Marco Mascolo, ventures, engineering, hardware, transcend human limitations, upgrade humans, redefine possible">
+    <meta name="theme-color" content="#0a0a0a">
+    <link rel="canonical" href="https://s-hawk.com/">
+
+    <!-- FAVICON: 48px minimum per Google, multiple sizes, absolute URLs -->
+    <link rel="icon" type="image/png" sizes="48x48" href="https://s-hawk.com/assets/logos/favicon-48x48.png">
+    <link rel="icon" type="image/png" sizes="96x96" href="https://s-hawk.com/assets/logos/favicon-96x96.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="https://s-hawk.com/assets/logos/favicon-192x192.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="https://s-hawk.com/assets/logos/apple-touch-icon.png">
+
+    <!-- OPEN GRAPH: absolute URLs, explicit dimensions -->
     <meta property="og:title" content="S-Hawk — The First of Many">
-    <meta property="og:description" content="Building ventures that upgrade humans and redefine what is possible.">
-    <meta property="og:image" content="assets/logos/og-image.png">
-    <meta property="og:url" content="https://s-hawk.com">
     <meta property="og:type" content="website">
+    <meta property="og:url" content="https://s-hawk.com/">
+    <meta property="og:image" content="https://s-hawk.com/assets/logos/og-image.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:type" content="image/png">
+    <meta property="og:image:alt" content="S-Hawk — The First of Many. Building ventures that upgrade humans.">
+    <meta property="og:description" content="Building ventures that upgrade humans and redefine what is possible.">
+    <meta property="og:site_name" content="S-Hawk">
+    <meta property="og:locale" content="en_US">
+
+    <!-- TWITTER/X: twitter:card has NO OG fallback, must be explicit -->
     <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:site" content="@_marco_masc">
+    <meta name="twitter:creator" content="@_marco_masc">
     <meta name="twitter:title" content="S-Hawk — The First of Many">
     <meta name="twitter:description" content="Building ventures that upgrade humans and redefine what is possible.">
+    <meta name="twitter:image" content="https://s-hawk.com/assets/logos/og-image.png">
+    <meta name="twitter:image:alt" content="S-Hawk — The First of Many. Building ventures that upgrade humans.">
+
+    <!-- JSON-LD @graph: WebSite + Organization + Person + ProfilePage, cross-linked via @id -->
     <script type="application/ld+json">
     {
         "@context": "https://schema.org",
-        "@type": "Organization",
-        "name": "S-Hawk",
-        "url": "https://s-hawk.com",
-        "description": "S-Hawk builds ventures that upgrade humans and redefine what is possible. The first of many. Inspired by vision, hunger, and the will to transcend limitations.",
-        "founder": {
-            "@type": "Person",
-            "name": "Marco Mascolo",
-            "sameAs": ["https://www.linkedin.com/in/marco-mascolo", "https://hanomi.ai"]
-        },
-        "foundingLocation": "San Francisco, CA",
-        "slogan": "The first of many."
+        "@graph": [
+            {
+                "@type": "WebSite",
+                "@id": "https://s-hawk.com/#website",
+                "url": "https://s-hawk.com/",
+                "name": "S-Hawk",
+                "description": "S-Hawk builds ventures that upgrade humans and redefine what is possible. The first of many.",
+                "publisher": { "@id": "https://s-hawk.com/#organization" },
+                "author": { "@id": "https://s-hawk.com/#person" },
+                "inLanguage": "en-US"
+            },
+            {
+                "@type": "ProfilePage",
+                "@id": "https://s-hawk.com/#profilepage",
+                "url": "https://s-hawk.com/",
+                "name": "Marco Mascolo — S-Hawk",
+                "dateCreated": "2025-01-01",
+                "dateModified": "2026-04-10",
+                "mainEntity": { "@id": "https://s-hawk.com/#person" },
+                "isPartOf": { "@id": "https://s-hawk.com/#website" }
+            },
+            {
+                "@type": "Person",
+                "@id": "https://s-hawk.com/#person",
+                "name": "Marco Mascolo",
+                "url": "https://s-hawk.com/",
+                "jobTitle": "Founder",
+                "description": "Founder of S-Hawk and Hanomi. Building ventures that upgrade humans and redefine what is possible.",
+                "sameAs": [
+                    "https://www.linkedin.com/in/marco-mascolo",
+                    "https://x.com/_marco_masc",
+                    "https://hanomi.ai"
+                ],
+                "worksFor": { "@id": "https://s-hawk.com/#organization" }
+            },
+            {
+                "@type": "Organization",
+                "@id": "https://s-hawk.com/#organization",
+                "name": "S-Hawk",
+                "url": "https://s-hawk.com/",
+                "description": "S-Hawk builds ventures that upgrade humans and redefine what is possible. The first of many.",
+                "logo": {
+                    "@type": "ImageObject",
+                    "url": "https://s-hawk.com/assets/logos/logo_mark_512.png",
+                    "width": 512,
+                    "height": 512
+                },
+                "foundingLocation": "San Francisco, CA",
+                "founder": { "@id": "https://s-hawk.com/#person" },
+                "slogan": "The first of many.",
+                "sameAs": [
+                    "https://hanomi.ai",
+                    "https://www.linkedin.com/in/marco-mascolo"
+                ]
+            }
+        ]
     }
     </script>
+
     <!--
         S-Hawk: named after the Seraphim S-Hawk from One Piece.
         A clone built to surpass the original. Vision of Mihawk.
@@ -43,8 +112,6 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preload" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
     <noscript><link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500&display=swap" rel="stylesheet"></noscript>
-    <link rel="icon" type="image/png" href="assets/logos/favicon.png">
-    <link rel="canonical" href="https://s-hawk.com">
     <style>
         *{margin:0;padding:0;box-sizing:border-box}
         html,body{background:#0a0a0a;width:100%;height:100%;overflow:hidden}
@@ -58,10 +125,67 @@
         @media (min-aspect-ratio: 9/10) {
             canvas{height:100vh;width:auto}
         }
+        /* Accessible + crawlable DOM mirror of canvas-drawn text.
+           Invisible to sighted users, fully indexable by Google and
+           readable by screen readers. Content here must match canvas. */
+        .visually-hidden{
+            clip:rect(0 0 0 0);
+            clip-path:inset(50%);
+            height:1px;
+            overflow:hidden;
+            position:absolute;
+            white-space:nowrap;
+            width:1px;
+            border:0;
+            margin:-1px;
+            padding:0;
+        }
     </style>
 </head>
 <body>
-<canvas id="c"></canvas>
+
+<!-- ────────────────────────────────────────────────────────────
+     Crawlable + accessible DOM mirror of the canvas-drawn text.
+     Content here mirrors exactly what the canvas displays to
+     sighted users — no invented copy, no cloaking.
+     Googlebot indexes this DOM; the canvas is treated as an image.
+     ──────────────────────────────────────────────────────────── -->
+<div class="visually-hidden">
+    <header>
+        <h1 id="page-title">S-Hawk</h1>
+        <p id="page-desc">The first of many. Built to transcend human limitations and redefine what is possible.</p>
+    </header>
+    <main>
+        <section aria-labelledby="page-title">
+            <p>THE FIRST OF MANY.</p>
+            <p>BUILT TO TRANSCEND HUMAN LIMITATIONS</p>
+            <p>AND REDEFINE WHAT IS POSSIBLE.</p>
+        </section>
+    </main>
+    <footer>
+        <p>© 2026 S-Hawk · All rights reserved.</p>
+    </footer>
+</div>
+
+<canvas id="c" role="img"
+        aria-labelledby="page-title"
+        aria-describedby="page-desc"
+        width="800" height="1000">
+    <!-- In-canvas fallback: exposed to the a11y tree even when canvas is supported. -->
+    <h1>S-Hawk</h1>
+    <p>The first of many. Built to transcend human limitations and redefine what is possible.</p>
+    <p>© 2026 S-Hawk · All rights reserved.</p>
+</canvas>
+
+<!-- JS-disabled fallback — WRS skips this because it executes JS, but real non-JS clients use it. -->
+<noscript>
+    <div>
+        <h1>S-Hawk</h1>
+        <p>The first of many. Built to transcend human limitations and redefine what is possible.</p>
+        <p>© 2026 S-Hawk · All rights reserved.</p>
+    </div>
+</noscript>
+
 <script>
 const canvas = document.getElementById('c');
 const ctx = canvas.getContext('2d');
