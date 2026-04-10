@@ -3,20 +3,57 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>S-Hawk</title>
+    <title>S-Hawk — The First of Many</title>
+    <meta name="description" content="S-Hawk. Building ventures that upgrade humans and redefine what is possible. The first of many.">
+    <meta name="author" content="Marco Mascolo">
+    <meta name="keywords" content="S-Hawk, Marco Mascolo, ventures, engineering, hardware, transcend human limitations, upgrade humans, redefine possible">
+    <meta property="og:title" content="S-Hawk — The First of Many">
+    <meta property="og:description" content="Building ventures that upgrade humans and redefine what is possible.">
+    <meta property="og:image" content="assets/logos/og-image.png">
+    <meta property="og:url" content="https://s-hawk.com">
+    <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="S-Hawk — The First of Many">
+    <meta name="twitter:description" content="Building ventures that upgrade humans and redefine what is possible.">
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "S-Hawk",
+        "url": "https://s-hawk.com",
+        "description": "S-Hawk builds ventures that upgrade humans and redefine what is possible. The first of many. Inspired by vision, hunger, and the will to transcend limitations.",
+        "founder": {
+            "@type": "Person",
+            "name": "Marco Mascolo",
+            "sameAs": ["https://www.linkedin.com/in/marco-mascolo", "https://hanomi.ai"]
+        },
+        "foundingLocation": "San Francisco, CA",
+        "slogan": "The first of many."
+    }
+    </script>
+    <!--
+        S-Hawk: named after the Seraphim S-Hawk from One Piece.
+        A clone built to surpass the original. Vision of Mihawk.
+        Hunger of the new world. The eye sees what others cannot.
+        Every venture under this banner exists to push humanity forward.
+        Hanomi was the beginning. What comes next will be larger.
+        — Marco Mascolo, San Francisco
+    -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500&display=swap" rel="stylesheet">
     <link rel="icon" type="image/png" href="assets/logos/favicon.png">
-    <meta property="og:image" content="assets/logos/og-image.png">
+    <link rel="canonical" href="https://s-hawk.com">
     <style>
         *{margin:0;padding:0;box-sizing:border-box}
         html,body{background:#0a0a0a;width:100%;height:100%;overflow:hidden}
         body{display:flex;align-items:center;justify-content:center}
         canvas{display:block;max-width:100vw;max-height:100vh;width:auto;height:auto;object-fit:contain}
+        /* On phones (portrait): fill width, let height follow aspect ratio */
         @media (max-aspect-ratio: 9/10) {
             canvas{width:100vw;height:auto}
         }
+        /* On wide screens: fill height, let width follow */
         @media (min-aspect-ratio: 9/10) {
             canvas{height:100vh;width:auto}
         }
@@ -28,75 +65,41 @@
 const canvas = document.getElementById('c');
 const ctx = canvas.getContext('2d');
 
+// Portrait format: text on top, eye in square zone below
 const W = 800;
 const H = 1000;
 canvas.width = W; canvas.height = H;
-const EYE_ZONE = 650;
-const EYE_TOP = 250;
+const EYE_ZONE = 650; // fixed reference for all eye proportions
+const EYE_TOP = 250;  // y where eye zone starts (room for text above)
 const PHI = 1.6180339887;
 
 // ═══════════════════════════════════════════════════════
-// PERFORMANCE STRATEGY (v2 — hybrid approach)
-//
-// Problem: Original renders ~80K ctx.arc() calls per frame.
-// Each is beginPath→arc→fill with unique rgba color string.
-//
-// v1 tried pixel buffer (dotP) but lost anti-aliasing quality.
-//
-// v2 approach: Keep ctx.arc() for identical visual quality BUT:
-// 1. Pre-render static background grain (offscreen canvas, once)
-// 2. Start eye + text animation immediately (no 2s blank wait)
-// 3. Font preconnect + display:swap (no render-blocking)
-// 4. Batch same-brightness dots into single path where possible
-// 5. Reduce redundant state changes (fillStyle only when changed)
-// ═══════════════════════════════════════════════════════
-
-// ── PRE-RENDERED BACKGROUND GRAIN (once, not every frame) ──
-let bgCanvas = document.createElement('canvas');
-bgCanvas.width = W; bgCanvas.height = H;
-let bgDone = false;
-
-function initBgGrain() {
-    let bgCtx = bgCanvas.getContext('2d');
-    bgCtx.fillStyle = '#0a0a0a';
-    bgCtx.fillRect(0, 0, W, H);
-    srand(42);
-    let bgN = Math.floor(W * H * 0.0006);
-    for (let i = 0; i < bgN; i++) {
-        let x = rand() * W, y = rand() * H, n = vn(x * .005, y * .005);
-        if (rand() > n * .4) continue;
-        let b = 14 + n * 11;
-        bgCtx.fillStyle = `rgba(${b|0},${b|0},${b|0},${(0.10+rand()*.10).toFixed(2)})`;
-        bgCtx.beginPath(); bgCtx.arc(x, y, rr(.3, .7), 0, Math.PI * 2); bgCtx.fill();
-    }
-    bgDone = true;
-}
-
-// ═══════════════════════════════════════════════════════
-// TEXT — typing with mistakes
+// TEXT — typing with mistakes, clear rendering, block cursor
 // ═══════════════════════════════════════════════════════
 
 const LINES = [
     "THE FIRST OF MANY.",
     "BUILT TO TRANSCEND HUMAN LIMITATIONS",
-    "AND PREPARE THEM FOR EXTRATERRESTRIAL TRAVEL."
+    "AND REDEFINE WHAT IS POSSIBLE."
 ];
 
+// Build typing sequence with typos, pauses, ...
 let typingEvents = [];
 
 function initTyping() {
     typingEvents = [];
-    let t = 0.6; // Start typing earlier — eye is already open
-    const CD = 0.065;
-    const FAST = 0.035;
-    const PAUSE = 0.35;
+    let t = 2.0;
+    const CD = 0.065;    // slower char delay
+    const FAST = 0.035;  // delete speed
+    const PAUSE = 0.35;  // longer pause before noticing mistake
     const LINE_GAP = 1.2;
 
     function typeStr(line, str) {
         for (let i = 0; i < str.length; i++) {
             typingEvents.push({ t, action: 'type', char: str[i], line });
+            // Human variance: occasional slight hesitation
             let variance = (Math.random() * 0.04 - 0.02);
-            if (Math.random() < 0.08) variance += 0.12;
+            if (Math.random() < 0.08) variance += 0.12; // rare longer pause mid-word
             t += CD + variance;
         }
     }
@@ -110,6 +113,7 @@ function initTyping() {
     }
     function pause(dur) { t += dur; }
 
+    // LINE 0: "THE FIRST OF MANY" (no dot) → type "..." → delete 2 → leaves one dot
     typeStr(0, "THE FIRST OF MANY");
     pause(0.5);
     typeStr(0, ".");
@@ -117,22 +121,26 @@ function initTyping() {
     typeStr(0, ".");
     pause(0.3);
     typeStr(0, ".");
-    pause(1.0);
-    deleteN(0, 2);
+    pause(1.0); // long dramatic pause
+    deleteN(0, 2); // delete last two dots, one dot remains → "THE FIRST OF MANY."
     pause(0.5);
 
+    // LINE 1: typo TRABSCE → delete 5 back to "TR" → TRANSCEND
+    // Then typo LIMITAITONS → delete 5 back to "LIMITA" → TIONS
     typeStr(1, "BUILT TO TRABSCE");
-    deleteN(1, 4);
-    typeStr(1, "ANSCEND HUMAN LIMTIATIONS");
-    deleteN(1, 7);
-    typeStr(1, "ITATIONS");
+    deleteN(1, 5);
+    typeStr(1, "ANSCEND HUMAN LIMITAITONS");
+    deleteN(1, 5);
+    typeStr(1, "TIONS");
     pause(LINE_GAP);
 
-    typeStr(2, "AND PRPARE");
-    deleteN(2, 5);
-    typeStr(2, "EPARE THEM FOR EXTRATERESTRIAL");
-    deleteN(2, 9);
-    typeStr(2, "RRESTRIAL TRAVEL.");
+    // LINE 2: typo REDFINE → delete 4 back to "RED" → REDEFINE
+    // Then typo POSSIBEL → delete 4 back to "POSSI" → BLE.
+    typeStr(2, "AND REDFINE");
+    deleteN(2, 4);
+    typeStr(2, "EFINE WHAT IS POSSIBEL.");
+    deleteN(2, 4);
+    typeStr(2, "BLE.");
 }
 initTyping();
 
@@ -158,39 +166,114 @@ function cursorOn(t) {
     return (t % 1.06) < 0.53;
 }
 
+// Text canvas for measuring only
+let textCanvas, textCtx;
+function initTextCanvas() {
+    textCanvas = document.createElement('canvas');
+    textCanvas.width = W;
+    textCanvas.height = 200;
+    textCtx = textCanvas.getContext('2d');
+}
+initTextCanvas();
+
+// ── FOOTER with calligraphic flourish ──
 function renderFooter(currentTime) {
     let { allDone } = getDisplayedText(currentTime);
     let footerAlpha = allDone ? Math.min(1, (currentTime - typingEvents[typingEvents.length-1].t - 0.8) * 0.5) : 0;
     if (footerAlpha <= 0) return;
 
-    let footerY = H - 32;
+    let footerTextY = H - 30;
+    let flourishY = footerTextY - 22;
+    let margin = 70;
+    let flourishW = W - margin * 2;
+
+    // ════════════════════════════════════════════════
+    // ORNAMENTAL FLOURISH DIVIDER
+    // A flowing calligraphic wave made of stipple dots.
+    // Gentle sine curves, thick at center, tapers at edges.
+    // Small star mark at the center point.
+    // ════════════════════════════════════════════════
 
     srand(55555);
-    let lineY = footerY - 15;
-    let lineMargin = 100;
-    for (let x = lineMargin; x < W - lineMargin; x += 1) {
-        let n = vn(x * 0.02, 7777);
-        if (rand() > 0.45 + n * 0.35) continue;
-        let b = 48 + rr(-5, 5);
-        ctx.fillStyle = `rgba(${b|0},${b|0},${(b*0.95)|0},${(footerAlpha * (0.22 + rr(0, 0.10))).toFixed(2)})`;
+    let dotCount = 1200;
+    for (let i = 0; i < dotCount; i++) {
+        let t = rand();
+        let x = margin + t * flourishW;
+        let ct = (t - 0.5) * 2;
+        let taper = Math.exp(-ct * ct * 3.5);
+        let wave = Math.sin(t * Math.PI * 5) * 4.5 * taper;
+        let thickness = 2.8 * taper;
+        let across = rr(-thickness, thickness);
+        let px = x + rr(-0.3, 0.3);
+        let py = flourishY + wave + across * 0.5 + rr(-0.3, 0.3);
+        let edgeDist = Math.abs(across) / thickness;
+        let density = 0.55 * taper * (1 - edgeDist * 0.5);
+        if (rand() > density) continue;
+        let b = 115 + rr(-10, 15);
+        let a = footerAlpha * (0.44 + taper * 0.35);
+        ctx.fillStyle = `rgba(${b|0},${b|0},${(b*0.95)|0},${a.toFixed(3)})`;
         ctx.beginPath();
-        ctx.arc(x + rr(-0.15, 0.15), lineY + rr(-0.15, 0.15), 0.35, 0, Math.PI * 2);
+        ctx.arc(px, py, 0.5, 0, Math.PI * 2);
         ctx.fill();
     }
 
-    ctx.font = `300 9px 'Space Grotesk', sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'top';
+    // Small decorative dots at the two ends of the flourish
+    for (let side of [-1, 1]) {
+        let ex = W / 2 + side * (flourishW / 2 - 5);
+        let dotN = 8;
+        srand(side > 0 ? 77777 : 88888);
+        for (let d = 0; d < dotN; d++) {
+            let dx = ex + rr(-2, 2);
+            let dy = flourishY + rr(-1.5, 1.5);
+            let b = 95 + rr(-8, 8);
+            ctx.fillStyle = `rgba(${b|0},${b|0},${(b*0.95)|0},${(footerAlpha * 0.38).toFixed(2)})`;
+            ctx.beginPath();
+            ctx.arc(dx, dy, 0.4, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+
+    // Center mark: tiny 5-point star at the middle of the flourish
+    srand(99999);
+    let starR = 3.5;
+    let starIR = starR * 0.42;
+    for (let d = 0; d < 50; d++) {
+        let angle = rand() * Math.PI * 2;
+        let sliceA = Math.PI / 5;
+        let a2 = ((angle + Math.PI/2) % (2*sliceA) + 2*sliceA) % (2*sliceA);
+        let st = a2 < sliceA ? a2/sliceA : (2*sliceA-a2)/sliceA;
+        let boundary = starIR + (starR - starIR) * (1 - st);
+        let r = rand() * boundary;
+        let px = W/2 + Math.cos(angle) * r;
+        let py = flourishY + Math.sin(angle) * r;
+        let b = 145 + rr(-10, 15);
+        let al = footerAlpha * (0.60 + rr(-0.05, 0.1));
+        ctx.fillStyle = `rgba(${b|0},${b|0},${(b*0.95)|0},${al.toFixed(3)})`;
+        ctx.beginPath();
+        ctx.arc(px + rr(-0.2, 0.2), py + rr(-0.2, 0.2), 0.45, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // ════════════════════════════════════════════════
+    // COPYRIGHT TEXT — brighter, warm gray
+    // ════════════════════════════════════════════════
     let year = new Date().getFullYear();
-    ctx.fillStyle = `rgba(110,108,102,${(footerAlpha * 0.40).toFixed(2)})`;
-    let footerStr = `\u00A9  ${year}  \u2014  ALL RIGHTS RESERVED`;
+    let footerStr = `\u00A9 ${year}  S-HAWK  \u2022  ALL RIGHTS RESERVED`;
+    ctx.font = `400 10px 'Space Grotesk', sans-serif`;
+    ctx.textBaseline = 'top';
+    let tracking = 2.5;
     let ftw = 0;
-    for (let i = 0; i < footerStr.length; i++) ftw += ctx.measureText(footerStr[i]).width + 1.5;
-    ftw -= 1.5;
+    for (let i = 0; i < footerStr.length; i++) ftw += ctx.measureText(footerStr[i]).width + tracking;
+    ftw -= tracking;
     let fx = (W - ftw) / 2;
     for (let i = 0; i < footerStr.length; i++) {
-        ctx.fillText(footerStr[i], fx, footerY);
-        fx += ctx.measureText(footerStr[i]).width + 1.5;
+        let ch = footerStr[i];
+        let b = 152 + (Math.sin(i * 0.7) * 5);
+        let a = footerAlpha * 0.65;
+        ctx.fillStyle = `rgba(${b|0},${(b-2)|0},${(b-6)|0},${a.toFixed(3)})`;
+        ctx.textAlign = 'left';
+        ctx.fillText(ch, fx, footerTextY);
+        fx += ctx.measureText(ch).width + tracking;
     }
 }
 
@@ -198,16 +281,58 @@ function renderText(currentTime) {
     let { lines, activeLine, allDone } = getDisplayedText(currentTime);
     if (activeLine < 0) return;
 
+    // ════════════════════════════════════════════════════════════
+    // TYPOGRAPHIC SYSTEM — Apple-grade analysis
+    //
+    // PRINCIPLE 1: Size creates hierarchy, not weight.
+    //   Line 0 is 22px. Lines 1-2 are 14px. That 1.57x ratio
+    //   is enough to separate them without needing bold.
+    //
+    // PRINCIPLE 2: Weight 400 (Regular) for display text.
+    //   Medium/Bold on all-caps looks corporate. Regular at
+    //   large size + wide tracking = confident and elegant.
+    //   Apple hero text is almost always Regular weight.
+    //
+    // PRINCIPLE 3: Tracking scales inversely with size.
+    //   Large text: 0.35em (loose, architectural, luxury)
+    //   Small text: 0.25em (still wide, but tighter ratio)
+    //   This follows SF Pro's optical size tracking curve.
+    //
+    // PRINCIPLE 4: Vertical rhythm has meaning.
+    //   Line 0 → Lines 1-2: gap (56px). Chapter break.
+    //   Line 1 → Line 2: tight gap (34px). Same sentence.
+    //   This creates grouping — Gestalt proximity.
+    //
+    // PRINCIPLE 5: Color hierarchy via opacity, not brightness.
+    //   Line 0: 0.90 alpha — the statement.
+    //   Lines 1-2: 0.52 alpha — recedes. Earned on second look.
+    //   Base color: warm off-white (232,228,220), not pure white.
+    //   Pure white on #0a0a0a creates eye strain.
+    //
+    // PRINCIPLE 6: No grain on text.
+    //   The grain/stipple texture belongs to the EYE.
+    //   Text should be clean — the contrast between clean type
+    //   and textured visual element is what creates impact.
+    //   Apple never puts noise on text.
+    // ════════════════════════════════════════════════════════════
+
+    // Warm off-white (not pure white — matches stipple dot tone)
     let baseR = 232, baseG = 228, baseB = 220;
 
+    // Line configs
     let lineConfig = [
+        // Line 0: THE FIRST OF MANY. — the anchor statement
         { size: 22, weight: 400, track: 7.5, alpha: 0.90, gapAfter: 56 },
+        // Line 1: continuation — secondary, lighter
         { size: 14, weight: 300, track: 4.8, alpha: 0.52, gapAfter: 34 },
+        // Line 2: continuation — same hierarchy as line 1
         { size: 14, weight: 300, track: 4.8, alpha: 0.52, gapAfter: 34 },
     ];
 
     let textAreaTop = 72;
+
     ctx.save();
+
     let yPos = textAreaTop;
 
     for (let li = 0; li <= 2; li++) {
@@ -219,6 +344,7 @@ function renderText(currentTime) {
 
         ctx.font = `${cfg.weight} ${cfg.size}px 'Space Grotesk', sans-serif`;
 
+        // Measure with tracking
         let charWidths = [];
         let totalW = 0;
         for (let ci = 0; ci < str.length; ci++) {
@@ -229,12 +355,14 @@ function renderText(currentTime) {
 
         let xPos = (W - totalW) / 2;
 
+        // Draw each character — clean, no grain
         for (let ci = 0; ci < str.length; ci++) {
             let ch = str[ci];
             let cw = charWidths[ci];
 
+            // Per-character micro-variation (barely perceptible, just breaks digital perfection)
             srand(li * 10000 + ci * 137);
-            let rVar = (rand() - 0.5) * 3;
+            let rVar = (rand() - 0.5) * 3; // very subtle brightness shift
 
             let r = baseR + rVar;
             let g = baseG + rVar * 0.9;
@@ -248,6 +376,7 @@ function renderText(currentTime) {
             xPos += cw + cfg.track;
         }
 
+        // ── BLOCK CURSOR ──
         if (li === activeLine && !allDone) {
             let show = cursorOn(currentTime);
             let cursorX = xPos + 3;
@@ -256,6 +385,7 @@ function renderText(currentTime) {
             let cursorY = yBase + 1;
 
             if (show) {
+                // Clean cursor block — warm tone, slight stipple
                 srand(9999 + Math.floor(currentTime * 2));
                 for (let dy = 0; dy < cursorH; dy++) {
                     for (let dx = 0; dx < cursorW; dx++) {
@@ -277,6 +407,7 @@ function renderText(currentTime) {
     }
 
     ctx.restore();
+
     renderFooter(currentTime);
 }
 
@@ -300,11 +431,10 @@ function vn(x,y){
 // ═══════════════════════════════════════════════════════
 let time = 0;
 let eyeOpen = 1, gazeAngle = 0, irisPulse = 1, starPtsF = 5;
+let bgGrainReady = false, bgGrainImg = null, bgGrainSeedAfter = 0;
 
 const LOOP = 20;
 const TL = [
-    // Eye opens immediately from a blink — first thing the viewer sees
-    {s:0.0,d:0.18,p:'eyeOpen',a:0,b:1,e:'eO'},
     {s:2.0,d:0.12,p:'eyeOpen',a:1,b:0,e:'eI'},
     {s:2.12,d:0.18,p:'eyeOpen',a:0,b:1,e:'eO'},
     {s:3.0,d:0.7,p:'gazeAngle',a:0,b:0.43,e:'eIO'},
@@ -357,7 +487,11 @@ function updateAnim(){
 }
 
 // ═══════════════════════════════════════════════════════
-// EYE GEOMETRY — identical to original
+// EYE GEOMETRY — smooth interior, discrete bite-mark border
+//
+// insideEye: smooth almond. No modulation. Clean clip.
+// Border: individual crescent marks with gaps, like the
+// tattoo reference — each tooth is a separate small arc.
 // ═══════════════════════════════════════════════════════
 
 function insideEye(px, py, cx, cy, eW, eH) {
@@ -367,29 +501,52 @@ function insideEye(px, py, cx, cy, eW, eH) {
 }
 
 function starRadF(angle,oR,iR,nF){
+    // TRUE POLYGON STAR: straight edges via ray-line intersection
+    // For fractional nF, blend between floor and ceil polygon stars
     let nL=Math.floor(nF),nH=nL+1,fr=nF-nL;
     function polyStarRad(n, ang) {
+        // Build 2n vertices: alternating outer tip, inner valley
+        // Tips point up (offset by -π/2)
         let totalVerts = 2 * n;
-        let segAngle = Math.PI / n;
+        let segAngle = Math.PI / n; // angle per segment (tip→valley or valley→tip)
+
+        // Normalize angle to [0, 2π)
         let a = ((ang + Math.PI/2) % (Math.PI*2) + Math.PI*2) % (Math.PI*2);
+
+        // Which segment are we in?
         let segIdx = Math.floor(a / segAngle);
         if (segIdx >= totalVerts) segIdx = totalVerts - 1;
+
+        // The two vertices bounding this segment
         let a1 = segIdx * segAngle;
         let a2 = (segIdx + 1) * segAngle;
         let r1 = (segIdx % 2 === 0) ? oR : iR;
         let r2 = ((segIdx + 1) % 2 === 0) ? oR : iR;
+
+        // Vertex positions (in rotated space where tip0 is at angle 0)
         let p1x = r1 * Math.cos(a1), p1y = r1 * Math.sin(a1);
         let p2x = r2 * Math.cos(a2), p2y = r2 * Math.sin(a2);
+
+        // Ray from origin at angle a: (t*cos(a), t*sin(a))
+        // Line: P1 + s*(P2-P1)
+        // Solve for t (distance from center)
         let ca = Math.cos(a), sa = Math.sin(a);
         let dx = p2x - p1x, dy = p2y - p1y;
         let denom = ca * dy - sa * dx;
-        if (Math.abs(denom) < 1e-10) return oR;
+        if (Math.abs(denom) < 1e-10) return oR; // degenerate
+
         let t = (p1x * dy - p1y * dx) / denom;
         return Math.max(0, t);
     }
     return polyStarRad(nL, angle) * (1-fr) + polyStarRad(nH, angle) * fr;
 }
-
+function starDFF(px,py,cx,cy,oR,iR,nF){
+    let d=Math.sqrt((px-cx)**2+(py-cy)**2);
+    let b=starRadF(Math.atan2(py-cy,px-cx),oR,iR,nF);
+    // Softer edge falloff for stipple (narrow band)
+    if(d>b*1.04)return 0;if(d<=b*.90)return 1;
+    return 1-(d-b*.90)/(b*.14);
+}
 function lightF(px,py,cx,cy){
     return .10+(Math.cos(Math.atan2(py-cy,px-cx)-5.497)+1)*.45;
 }
@@ -411,25 +568,22 @@ function distFromIrisCenter(cx2,cy2,cx,cy,tr){
 }
 
 // ═══════════════════════════════════════════════════════
-// EYE RENDER — same ctx.arc() quality, optimized fillStyle
+// EYE RENDER (identical logic, shifted down)
 // ═══════════════════════════════════════════════════════
 
-// PERF: reuse string buffer to reduce fillStyle string allocations
-let _lastFill = '';
 function dot(x,y,brightness,alpha){
-    let bi = brightness|0;
-    let ai = Math.min(1,alpha);
-    let s = `rgba(${bi},${bi},${(bi*.98)|0},${ai.toFixed(3)})`;
-    if (s !== _lastFill) { ctx.fillStyle = s; _lastFill = s; }
+    ctx.fillStyle=`rgba(${brightness|0},${brightness|0},${(brightness*.98)|0},${Math.min(1,alpha).toFixed(3)})`;
     ctx.beginPath();ctx.arc(x,y,0.7,0,Math.PI*2);ctx.fill();
 }
 
 function renderEye(){
     srand(42);
 
+    // Eye centered in the eye zone (below text)
     let cx = W / 2;
     let cy = EYE_TOP + EYE_ZONE * 0.47;
 
+    // All dimensions relative to EYE_ZONE (fixed square), NOT canvas W or H
     let eyeW = EYE_ZONE * 0.85;
     let eyeH = EYE_ZONE * 0.38 * 0.68 * eyeOpen;
 
@@ -447,6 +601,27 @@ function renderEye(){
 
     let densityScale = Math.pow(eyeOpen, 0.5);
     let base = 20000 * densityScale;
+
+    // ── BG GRAIN (pre-rendered once for performance) ──
+    if (!bgGrainReady) {
+        let bgC = document.createElement('canvas');
+        bgC.width = W; bgC.height = H;
+        let bgX = bgC.getContext('2d');
+        let savedSeed = rS;
+        let bgN = Math.floor(W * H * 0.0006);
+        for(let i=0;i<bgN;i++){
+            let x=rand()*W,y=rand()*H,n=vn(x*.005,y*.005);
+            if(rand()>n*.4)continue;
+            let b=14+n*11;
+            bgX.fillStyle=`rgba(${b|0},${b|0},${b|0},${(0.10+rand()*.10).toFixed(2)})`;
+            bgX.beginPath();bgX.arc(x,y,rr(.3,.7),0,Math.PI*2);bgX.fill();
+        }
+        bgGrainImg = bgC;
+        bgGrainSeedAfter = rS;
+        bgGrainReady = true;
+    }
+    rS = bgGrainSeedAfter; // keep RNG in sync
+    ctx.drawImage(bgGrainImg, 0, 0);
 
     // ── SCLERA ──
     let sN=Math.floor(base*1.7);
@@ -493,6 +668,7 @@ function renderEye(){
         let l=lightF(pt.x,pt.y,cx+tr.offsetX,cy);
         let n=vn(pt.x*.01,pt.y*.01);
         den*=(.5+n*.5)*(.5+l*.6);
+        // local star check
         let slx=(pt.x-cx-tr.offsetX)/tr.scaleX,sly=(pt.y-cy)/tr.scaleY;
         let sd2=Math.sqrt(slx*slx+sly*sly);
         let sa=Math.atan2(sly,slx);
@@ -533,7 +709,7 @@ function renderEye(){
         dot(pt.x,pt.y,Math.min(250,dB+22+rr(-6,12)),.35+(1-dn)*.3);
     }
 
-    // ── BITE MARKS ──
+    // ── BITE MARKS — thick discrete crescents, clear gaps ──
     function renderBiteMarks(side, teethOffset) {
         let numTeeth = 10;
         let dotsPerTooth = Math.floor(base * 0.12);
@@ -549,6 +725,7 @@ function renderEye(){
             let boundaryX = cx + dx * eyeW * 0.5;
             let boundaryY = cy + side * almondY * eyeH * 0.5;
 
+            // CENTERED tangent (symmetric derivative)
             let dxL = dx - 0.005, dxR = dx + 0.005;
             let ayL = Math.pow(Math.max(0, 1 - dxL * dxL), 0.6);
             let ayR = Math.pow(Math.max(0, 1 - dxR * dxR), 0.6);
@@ -558,8 +735,10 @@ function renderEye(){
             if (tgLen < 0.001) continue;
             let tx = tgX / tgLen, ty = tgY / tgLen;
 
+            // Normal pointing OUTWARD
             let nx = ty * side, ny = -tx * side;
 
+            // Variable size
             let centerDist = Math.abs(dx);
             let markLen = eyeW * 0.025 * (0.6 + centerDist * 0.8);
             let markThick = eyeH * 0.055 * (0.5 + centerDist * 0.7);
@@ -568,14 +747,17 @@ function renderEye(){
             srand(42 + ti * 777 + (side > 0 ? 50000 : 0));
             for (let di = 0; di < dotsPerTooth; di++) {
                 let along = rr(-1, 1);
+                // CENTERED: -0.5 to 0.5 so crescent is symmetric
                 let across = rr(-0.5, 0.5);
 
+                // Symmetric elliptical profile
                 let profile = Math.sqrt(Math.max(0, 1 - along * along));
 
                 let curve = profile * bowOut;
                 let localThick = markThick * profile;
 
                 let localX = along * markLen;
+                // Centered: body extends equally both sides of the bow curve
                 let localY = curve + across * localThick;
 
                 let px = boundaryX + tx * localX + nx * localY;
@@ -583,6 +765,7 @@ function renderEye(){
                 px += rr(-0.45, 0.45);
                 py += rr(-0.45, 0.45);
 
+                // Symmetric density: densest at spine, fades at both edges
                 let density = 0.78 * profile * (1.0 - Math.abs(across) * 0.6);
                 if (Math.abs(along) > 0.75) density *= (1 - Math.abs(along)) / 0.25;
                 if (rand() > density) continue;
@@ -624,12 +807,14 @@ function renderEye(){
 function drawSeam(cx,cy,eyeW){
     srand(42);
     let numTeeth = 10;
+    // Discrete chunky tooth marks along the closed seam
     for(let ti = 0; ti < numTeeth; ti++){
         let tPos = 0.07 + (ti / (numTeeth - 1)) * 0.86;
         let dx = -1 + tPos * 2;
         if(Math.abs(dx) > 0.96) continue;
         let bx = cx + dx * eyeW * 0.5;
 
+        // Variable width: narrow center, wider sides
         let centerDist = Math.abs(dx);
         let markW = 3 + centerDist * 5;
         let markH = 1.5 + centerDist * 1.5;
@@ -653,7 +838,6 @@ function drawSeam(cx,cy,eyeW){
 // MAIN LOOP
 // ═══════════════════════════════════════════════════════
 let lastT=0;
-
 function loop(ts){
     if(!lastT)lastT=ts;
     let dt=(ts-lastT)/1000;lastT=ts;
@@ -662,14 +846,11 @@ function loop(ts){
 
     updateAnim();
 
-    // Init bg grain once (deferred to first frame so page renders instantly)
-    if (!bgDone) initBgGrain();
+    // Clear
+    ctx.fillStyle='#0a0a0a';
+    ctx.fillRect(0,0,W,H);
 
-    // Clear: blit pre-rendered background (includes grain)
-    ctx.drawImage(bgCanvas, 0, 0);
-
-    // Render eye (uses ctx.arc — identical visual quality to original)
-    _lastFill = '';
+    // Render eye first
     renderEye();
 
     // Render text on top
