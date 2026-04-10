@@ -1,0 +1,5 @@
+# s-hawk.com — allow all crawlers, point to sitemap
+User-agent: *
+Allow: /
+
+Sitemap: https://s-hawk.com/sitemap.xml
